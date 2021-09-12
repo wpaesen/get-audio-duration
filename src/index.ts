@@ -1,8 +1,13 @@
+let ffprobePath:string = ""
+
 import * as ffprobe from 'node-ffprobe-installer'
 
 import * as execa from 'execa'
 import * as isStream from 'is-stream'
 import { Readable as ReadableStream } from 'stream'
+
+import * as fs from 'fs'
+
 
 const getFFprobeWrappedExecution = (
   input: string | ReadableStream
@@ -16,12 +21,28 @@ const getFFprobeWrappedExecution = (
     '-show_streams',
   ]
 
+  /* Workaround for asar path problem for ffmpeg.
+   *
+   */
+  if (ffprobePath == "") {
+    if (ffprobe.path.indexOf('app.asar')>=0) {
+      const ffprobePathUnpacked = ffprobe.path.replace('app.asar', 'app.asar.unpacked')
+      if (fs.existsSync(ffprobePathUnpacked)) {
+        ffprobePath = ffprobePathUnpacked
+      }
+    }
+    if (ffprobePath == "") {
+	ffprobePath = ffprobe.path
+    } 
+  }
+
   if (typeof input === 'string') {
-    return execa(ffprobe.path, [...params, input])
+    return execa(ffprobePath, [...params, input])
   }
 
   if (isStream(input)) {
-    return execa(ffprobe.path, [...params, '-i', 'pipe:0'], {
+
+    return execa(ffprobePath, [...params, '-i', 'pipe:0'], {
       reject: false,
       input,
     })
